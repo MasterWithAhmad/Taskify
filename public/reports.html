@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Taskify</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .report-card {
+            transition: transform 0.2s;
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">Taskify</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                aria-label="Toggle navigation" title="Toggle navigation menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/reports">Reports</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container py-4">
+        <h2 class="mb-4">Task Analytics & Reports</h2>
+        
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card report-card bg-primary text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Tasks</h5>
+                        <h2 id="totalTasks">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card report-card bg-success text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Completed Tasks</h5>
+                        <h2 id="completedTasks">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card report-card bg-warning text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">In Progress</h5>
+                        <h2 id="inProgressTasks">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card report-card bg-danger text-white">
+                    <div class="card-body">
+                        <h5 class="card-title">Overdue Tasks</h5>
+                        <h2 id="overdueTasks">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Task Completion Trend</h5>
+                        <canvas id="completionTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Task Distribution by Priority</h5>
+                        <canvas id="priorityDistributionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Reports -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Activity</h5>
+                        <div id="recentActivity" class="list-group list-group-flush">
+                            <!-- Activity items will be inserted here -->
+                        </div>
+                        <nav aria-label="Activity pagination" class="mt-3">
+                            <ul class="pagination justify-content-center" id="activityPagination">
+                                <li class="page-item">
+                                    <button class="page-link" onclick="changePage('prev')" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </button>
+                                </li>
+                                <li class="page-item">
+                                    <span class="page-link" id="currentPage">Page 1</span>
+                                </li>
+                                <li class="page-item">
+                                    <button class="page-link" onclick="changePage('next')" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card report-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Performance Metrics</h5>
+                        <div id="performanceMetrics">
+                            <!-- Performance metrics will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Pagination state
+        let currentPage = 1;
+        const itemsPerPage = 5;
+        let totalTasks = [];
+        let totalPages = 1;
+
+        // Check authentication
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            return token;
+        }
+
+        // Add authorization header to all fetch requests
+        function fetchWithAuth(url, options = {}) {
+            const token = checkAuth();
+            const headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+
+            return fetch(url, { ...options, headers })
+                .then(response => {
+                    if (response.status === 401) {
+                        window.location.href = '/login';
+                        throw new Error('Unauthorized');
+                    }
+                    return response;
+                });
+        }
+
+        // Initialize charts
+        const completionTrendChart = new Chart(document.getElementById('completionTrendChart'), {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                datasets: [{
+                    label: 'Completed Tasks',
+                    data: [0, 0, 0, 0],
+                    borderColor: '#28a745',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        const priorityDistributionChart = new Chart(document.getElementById('priorityDistributionChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Low', 'Medium', 'High'],
+                datasets: [{
+                    label: 'Tasks by Priority',
+                    data: [0, 0, 0],
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Load and display data
+        function loadReportData() {
+            fetchWithAuth('/api/tasks')
+                .then(response => response.json())
+                .then(tasks => {
+                    totalTasks = tasks;
+                    totalPages = Math.ceil(tasks.length / itemsPerPage);
+                    updateSummaryCards(tasks);
+                    updateCharts(tasks);
+                    updateRecentActivity();
+                    updatePerformanceMetrics(tasks);
+                    updatePaginationControls();
+                })
+                .catch(error => {
+                    console.error('Error loading report data:', error);
+                });
+        }
+
+        // Update summary cards
+        function updateSummaryCards(tasks) {
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(t => t.status === 'completed').length;
+            const inProgressTasks = tasks.filter(t => t.status === 'in_progress').length;
+            const overdueTasks = tasks.filter(t => {
+                const dueDate = new Date(t.due_date);
+                const today = new Date();
+                return dueDate < today && t.status !== 'completed';
+            }).length;
+
+            document.getElementById('totalTasks').textContent = totalTasks;
+            document.getElementById('completedTasks').textContent = completedTasks;
+            document.getElementById('inProgressTasks').textContent = inProgressTasks;
+            document.getElementById('overdueTasks').textContent = overdueTasks;
+        }
+
+        // Update charts
+        function updateCharts(tasks) {
+            // Update priority distribution chart
+            const priorityCounts = {
+                low: tasks.filter(t => t.priority === 'low').length,
+                medium: tasks.filter(t => t.priority === 'medium').length,
+                high: tasks.filter(t => t.priority === 'high').length
+            };
+
+            priorityDistributionChart.data.datasets[0].data = [
+                priorityCounts.low,
+                priorityCounts.medium,
+                priorityCounts.high
+            ];
+            priorityDistributionChart.update();
+
+            // Update completion trend chart (simplified version)
+            const completedTasks = tasks.filter(t => t.status === 'completed');
+            const completionTrend = [0, 0, 0, 0]; // 4 weeks of data
+            completedTasks.forEach(task => {
+                const completionDate = new Date(task.created_at);
+                const weekIndex = Math.floor((new Date() - completionDate) / (7 * 24 * 60 * 60 * 1000));
+                if (weekIndex >= 0 && weekIndex < 4) {
+                    completionTrend[weekIndex]++;
+                }
+            });
+
+            completionTrendChart.data.datasets[0].data = completionTrend;
+            completionTrendChart.update();
+        }
+
+        // Update recent activity with pagination
+        function updateRecentActivity() {
+            const recentActivity = document.getElementById('recentActivity');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageTasks = totalTasks.slice(startIndex, endIndex);
+            
+            if (pageTasks.length === 0) {
+                recentActivity.innerHTML = '<div class="text-center text-muted">No tasks found</div>';
+                return;
+            }
+
+            recentActivity.innerHTML = pageTasks.map(task => `
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${task.title}</h6>
+                        <small>${new Date(task.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <p class="mb-1">${task.description}</p>
+                    <small>Status: ${task.status}</small>
+                </div>
+            `).join('');
+        }
+
+        // Update pagination controls
+        function updatePaginationControls() {
+            const prevButton = document.querySelector('#activityPagination .page-item:first-child .page-link');
+            const nextButton = document.querySelector('#activityPagination .page-item:last-child .page-link');
+            const currentPageSpan = document.getElementById('currentPage');
+
+            // Update current page display
+            currentPageSpan.textContent = `Page ${currentPage} of ${totalPages}`;
+
+            // Update button states
+            prevButton.disabled = currentPage === 1;
+            nextButton.disabled = currentPage === totalPages;
+
+            // Update button styles
+            prevButton.classList.toggle('disabled', currentPage === 1);
+            nextButton.classList.toggle('disabled', currentPage === totalPages);
+        }
+
+        // Handle page changes
+        function changePage(direction) {
+            if (direction === 'prev' && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 'next' && currentPage < totalPages) {
+                currentPage++;
+            }
+            updateRecentActivity();
+            updatePaginationControls();
+        }
+
+        // Update performance metrics
+        function updatePerformanceMetrics(tasks) {
+            const performanceMetrics = document.getElementById('performanceMetrics');
+            const completedTasks = tasks.filter(t => t.status === 'completed');
+            const totalTasks = tasks.length;
+            const completionRate = totalTasks > 0 ? (completedTasks.length / totalTasks) * 100 : 0;
+            const averageCompletionTime = calculateAverageCompletionTime(completedTasks);
+
+            performanceMetrics.innerHTML = `
+                <div class="mb-3">
+                    <h6>Completion Rate</h6>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: ${completionRate}%">
+                            ${completionRate.toFixed(1)}%
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <h6>Average Completion Time</h6>
+                    <p>${averageCompletionTime} days</p>
+                </div>
+                <div class="mb-3">
+                    <h6>Task Distribution</h6>
+                    <p>High Priority: ${tasks.filter(t => t.priority === 'high').length}</p>
+                    <p>Medium Priority: ${tasks.filter(t => t.priority === 'medium').length}</p>
+                    <p>Low Priority: ${tasks.filter(t => t.priority === 'low').length}</p>
+                </div>
+            `;
+        }
+
+        // Helper function to calculate average completion time
+        function calculateAverageCompletionTime(completedTasks) {
+            if (completedTasks.length === 0) return 0;
+            
+            const totalDays = completedTasks.reduce((sum, task) => {
+                const created = new Date(task.created_at);
+                const completed = new Date(task.updated_at || task.created_at);
+                return sum + (completed - created) / (1000 * 60 * 60 * 24);
+            }, 0);
+            
+            return (totalDays / completedTasks.length).toFixed(1);
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth(); // Check authentication on page load
+            loadReportData();
+        });
+    </script>
+</body>
+</html> 
