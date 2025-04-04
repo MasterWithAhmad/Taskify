@@ -2,7 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('tasks.db');
 
 // First, get the user_id for 'ahmad'
-db.get('SELECT id FROM users WHERE username = ?', ['ahmad'], (err, user) => {
+db.get('SELECT id FROM users WHERE username = ?', ['testUser'], (err, user) => {
     if (err) {
         console.error('Error finding user:', err);
         return;

@@ -1,6 +1,6 @@
 -- First, ensure we have a test user
 INSERT INTO users (username, password) VALUES 
-('testuser', '$2b$10$lTdlZLzn0zehBlSojqw8eO0Nfp/HEbN76b.NZ71zE1CG6iD.of.k6'); -- password: test123
+('testuser', '$2b$10$VZCPrbI5MqyrcJn2Fybna.115lJV6Y2L9niegNZqSBjd8Z9wMjqu2'); -- password: test123
 
 -- Get the user_id of the test user
 SET @user_id = (SELECT id FROM users WHERE username = 'testuser');

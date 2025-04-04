@@ -79,6 +79,26 @@ CREATE TABLE tasks (
 );
 ```
 
+## Screenshots
+
+### Register Page
+![Register Page](screenshots/register.png)
+
+### Login Page
+![Login Page](screenshots/login.png)
+
+### Calendar View
+![Calendar View](screenshots/calendar.png)
+
+### Report Page
+![Report Page](screenshots/report.png)
+
+### Modal Example
+![Modal Example](screenshots/modal.png)
+
+### Dashboard
+![Dashboard](screenshots/dashboard.png)
+
 ## Contributing
 
 1. Fork the repository
