@@ -20,7 +20,7 @@ A modern, feature-rich task management system built with Node.js, Express, SQLit
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/MasterWithAhmad/Taskify.git
 cd taskify
 ```
 
